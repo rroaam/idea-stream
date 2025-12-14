@@ -1,906 +1,1230 @@
 'use client';
+import { useState, useMemo } from 'react';
+import { MapPin, Clock, DollarSign, Target, Flag, ChevronRight, X, Filter, ArrowUpDown, Check } from 'lucide-react';
 
-import React, { useState, useEffect } from 'react';
-import { Camera, Plus, X, Filter, Search, Image as ImageIcon, Calendar, ArrowLeft } from 'lucide-react';
+// ============================================
+// MOCK DATA - 12 Golf Courses
+// ============================================
+const generateTeeTimes = (courseId, priceBase) => {
+  const today = new Date();
+  const times = [];
 
-export default function Home() {
-  const [ideas, setIdeas] = useState([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedIdea, setSelectedIdea] = useState(null);
-  const [currentFilter, setCurrentFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    emoji: '💡',
-    description: '',
-    category: '',
-    tags: '',
-    images: [],
-    notes: []
-  });
-  
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  for (let day = 0; day < 7; day++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + day);
 
-  // Sample ideas for initial load
-  const sampleIdeas = [
-    {
-      id: '1',
-      name: "T.I.M.E.",
-      emoji: "🎬",
-      description: "A film/story exploring the nature of time, consciousness, and reality. Multiple timelines converging.",
-      category: "story",
-      tags: ["film", "sci-fi", "narrative"],
-      images: [],
-      notes: [],
-      createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '2',
-      name: "Klip Kid",
-      emoji: "🧢",
-      description: "Custom hat company with unique, personally designed pieces. Each hat tells a story.",
-      category: "product",
-      tags: ["fashion", "custom", "apparel"],
-      images: [],
-      notes: [],
-      createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '3',
-      name: "EMF Pad Art",
-      emoji: "🎨",
-      description: "Stylized non-radiation pads with unique artistic designs. Function meets beauty.",
-      category: "product",
-      tags: ["health", "design", "wellness"],
-      images: [],
-      notes: [],
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: '4',
-      name: "Kulti",
-      emoji: "📱",
-      description: "Creative livestreaming app for artists and makers. Real-time creative collaboration.",
-      category: "app",
-      tags: ["streaming", "creative", "community"],
-      images: [],
-      notes: [],
-      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-    }
-  ];
+    // Morning times (6am - 11am)
+    const morningSlots = [6, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11];
+    morningSlots.forEach((hour, idx) => {
+      // Use deterministic availability based on day and hour
+      if ((day + idx + courseId) % 3 !== 0) {
+        const h = Math.floor(hour);
+        const m = (hour % 1) * 60;
+        times.push({
+          id: `${courseId}-${day}-m-${hour}`,
+          date: date.toISOString().split('T')[0],
+          time: `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`,
+          period: 'morning',
+          price: priceBase + ((day + idx) % 20),
+          spots: ((day + idx + courseId) % 4) + 1
+        });
+      }
+    });
 
-  const emojiOptions = ['💡', '🎨', '🚀', '🎬', '📱', '✨', '🌊', '🔥', '⚡', '🎯', '🎪', '🎭', '🧢', '📝', '🎵', '🏗️', '🌱', '🦋', '🎪', '🔮', '🎲', '🎨', '📚', '🎸'];
+    // Afternoon times (12pm - 4pm)
+    const afternoonSlots = [12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16];
+    afternoonSlots.forEach((hour, idx) => {
+      if ((day + idx + courseId) % 4 !== 0) {
+        const h = Math.floor(hour);
+        const m = (hour % 1) * 60;
+        times.push({
+          id: `${courseId}-${day}-a-${hour}`,
+          date: date.toISOString().split('T')[0],
+          time: `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`,
+          period: 'afternoon',
+          price: priceBase + ((day + idx) % 15) + 10,
+          spots: ((day + idx + courseId) % 4) + 1
+        });
+      }
+    });
 
-  // Load ideas from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('ideastream-ideas');
-    if (stored) {
-      setIdeas(JSON.parse(stored));
-    } else {
-      setIdeas(sampleIdeas);
-      localStorage.setItem('ideastream-ideas', JSON.stringify(sampleIdeas));
-    }
-  }, []);
+    // Twilight times (5pm - 7pm)
+    const twilightSlots = [17, 17.5, 18, 18.5, 19];
+    twilightSlots.forEach((hour, idx) => {
+      if ((day + idx + courseId) % 3 !== 1) {
+        const h = Math.floor(hour);
+        const m = (hour % 1) * 60;
+        times.push({
+          id: `${courseId}-${day}-t-${hour}`,
+          date: date.toISOString().split('T')[0],
+          time: `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`,
+          period: 'twilight',
+          price: Math.floor(priceBase * 0.7) + ((day + idx) % 10),
+          spots: ((day + idx + courseId) % 4) + 1
+        });
+      }
+    });
+  }
 
-  // Save to localStorage whenever ideas change
-  useEffect(() => {
-    if (ideas.length > 0) {
-      localStorage.setItem('ideastream-ideas', JSON.stringify(ideas));
-    }
-  }, [ideas]);
+  return times;
+};
 
-  const categories = ['all', 'app', 'product', 'art', 'story', 'other'];
+const MOCK_COURSES = [
+  {
+    id: 1,
+    name: "Pine Valley Golf Club",
+    address: "1 Pine Valley Way",
+    city: "Pine Valley",
+    distance: 3.2,
+    difficulty: "advanced",
+    priceRange: "$$$",
+    basePrice: 125,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 72,
+    yearEstablished: 1913,
+    description: "Consistently ranked among the finest courses in the nation. A challenging layout through pristine pine forests with immaculate conditioning.",
+    amenities: ["Pro Shop", "Restaurant", "Locker Room", "Cart Rental", "Club Rental", "Practice Green"],
+    phone: "(555) 123-4567",
+    website: "https://pinevalleygc.example.com"
+  },
+  {
+    id: 2,
+    name: "Oakmont Country Club",
+    address: "1234 Hulton Road",
+    city: "Oakmont",
+    distance: 7.8,
+    difficulty: "advanced",
+    priceRange: "$$$",
+    basePrice: 145,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 71,
+    yearEstablished: 1903,
+    description: "Historic championship course known for its lightning-fast greens and challenging church pew bunkers. Host to multiple major championships.",
+    amenities: ["Pro Shop", "Fine Dining", "Locker Room", "Caddie Service", "Practice Facility", "Spa"],
+    phone: "(555) 234-5678",
+    website: "https://oakmont.example.com"
+  },
+  {
+    id: 3,
+    name: "Meadowbrook Municipal",
+    address: "500 Fairway Drive",
+    city: "Riverside",
+    distance: 2.1,
+    difficulty: "beginner",
+    priceRange: "$",
+    basePrice: 28,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 70,
+    yearEstablished: 1962,
+    description: "A welcoming municipal course perfect for beginners and families. Well-maintained with forgiving fairways and reasonable rates.",
+    amenities: ["Pro Shop", "Snack Bar", "Cart Rental", "Club Rental", "Practice Green"],
+    phone: "(555) 345-6789",
+    website: "https://meadowbrookmuni.example.com"
+  },
+  {
+    id: 4,
+    name: "Shadow Creek Links",
+    address: "789 Shadow Lane",
+    city: "Henderson",
+    distance: 12.4,
+    difficulty: "intermediate",
+    priceRange: "$$",
+    basePrice: 75,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 72,
+    yearEstablished: 1989,
+    description: "A stunning desert oasis featuring dramatic elevation changes and strategically placed water hazards. A true test of shot-making.",
+    amenities: ["Pro Shop", "Restaurant", "Cart Rental", "Practice Range", "Short Game Area"],
+    phone: "(555) 456-7890",
+    website: "https://shadowcreek.example.com"
+  },
+  {
+    id: 5,
+    name: "Willow Creek Golf Course",
+    address: "2200 Willow Road",
+    city: "Springfield",
+    distance: 5.6,
+    difficulty: "beginner",
+    priceRange: "$",
+    basePrice: 32,
+    hasDrivingRange: false,
+    holes: 18,
+    par: 68,
+    yearEstablished: 1978,
+    description: "A friendly neighborhood course with gentle terrain. Great for learning the game or enjoying a relaxed round with friends.",
+    amenities: ["Pro Shop", "Snack Bar", "Cart Rental", "Practice Green"],
+    phone: "(555) 567-8901",
+    website: "https://willowcreek.example.com"
+  },
+  {
+    id: 6,
+    name: "The Preserve at Ironwood",
+    address: "4500 Ironwood Trail",
+    city: "Scottsdale",
+    distance: 18.9,
+    difficulty: "advanced",
+    priceRange: "$$$",
+    basePrice: 135,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 73,
+    yearEstablished: 2001,
+    description: "An environmental masterpiece carved through natural desert terrain. Each hole offers breathtaking views and strategic challenges.",
+    amenities: ["Pro Shop", "Fine Dining", "Locker Room", "Caddie Service", "Practice Facility", "Fitness Center"],
+    phone: "(555) 678-9012",
+    website: "https://preserveironwood.example.com"
+  },
+  {
+    id: 7,
+    name: "Rolling Hills Golf Club",
+    address: "888 Summit Drive",
+    city: "Greendale",
+    distance: 8.3,
+    difficulty: "intermediate",
+    priceRange: "$$",
+    basePrice: 62,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 71,
+    yearEstablished: 1954,
+    description: "A classic parkland design with mature trees and well-bunkered greens. Challenging but fair for players of all skill levels.",
+    amenities: ["Pro Shop", "Restaurant", "Cart Rental", "Practice Range", "Lessons"],
+    phone: "(555) 789-0123",
+    website: "https://rollinghillsgc.example.com"
+  },
+  {
+    id: 8,
+    name: "Harbor Links",
+    address: "1 Marina Boulevard",
+    city: "Portside",
+    distance: 15.2,
+    difficulty: "intermediate",
+    priceRange: "$$",
+    basePrice: 85,
+    hasDrivingRange: false,
+    holes: 18,
+    par: 72,
+    yearEstablished: 1967,
+    description: "A beautiful coastal course with stunning ocean views. Wind plays a significant factor, making club selection crucial.",
+    amenities: ["Pro Shop", "Oceanview Restaurant", "Cart Rental", "Club Rental"],
+    phone: "(555) 890-1234",
+    website: "https://harborlinks.example.com"
+  },
+  {
+    id: 9,
+    name: "Sunset Valley Executive",
+    address: "300 Valley View Road",
+    city: "Westbrook",
+    distance: 4.1,
+    difficulty: "beginner",
+    priceRange: "$",
+    basePrice: 22,
+    hasDrivingRange: true,
+    holes: 9,
+    par: 27,
+    yearEstablished: 1985,
+    description: "A well-designed executive 9-hole course, perfect for a quick round after work. Great for honing your short game.",
+    amenities: ["Pro Shop", "Snack Bar", "Practice Range", "Practice Green"],
+    phone: "(555) 901-2345",
+    website: "https://sunsetvalley.example.com"
+  },
+  {
+    id: 10,
+    name: "Cypress Ridge Country Club",
+    address: "5600 Cypress Point Drive",
+    city: "Monterey",
+    distance: 22.7,
+    difficulty: "advanced",
+    priceRange: "$$$",
+    basePrice: 150,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 72,
+    yearEstablished: 1928,
+    description: "A legendary oceanside course with dramatic cliff-side holes. The back nine is among the most scenic in golf.",
+    amenities: ["Pro Shop", "Fine Dining", "Locker Room", "Spa", "Caddie Service", "Golf Academy"],
+    phone: "(555) 012-3456",
+    website: "https://cypressridge.example.com"
+  },
+  {
+    id: 11,
+    name: "Fairview Public Golf",
+    address: "1100 Park Avenue",
+    city: "Fairview",
+    distance: 6.4,
+    difficulty: "beginner",
+    priceRange: "$",
+    basePrice: 35,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 70,
+    yearEstablished: 1971,
+    description: "A well-maintained public course offering great value. Wide fairways and accessible greens make it ideal for casual golfers.",
+    amenities: ["Pro Shop", "Grill", "Cart Rental", "Club Rental", "Practice Range"],
+    phone: "(555) 112-2334",
+    website: "https://fairviewpublic.example.com"
+  },
+  {
+    id: 12,
+    name: "Stonebridge Golf Resort",
+    address: "7800 Stone Bridge Road",
+    city: "Highland",
+    distance: 11.8,
+    difficulty: "intermediate",
+    priceRange: "$$",
+    basePrice: 89,
+    hasDrivingRange: true,
+    holes: 18,
+    par: 72,
+    yearEstablished: 1995,
+    description: "A resort-style course featuring stone bridges, cascading waterfalls, and meticulously maintained bentgrass greens.",
+    amenities: ["Pro Shop", "Restaurant", "Locker Room", "Cart Rental", "Practice Facility", "Resort Lodging"],
+    phone: "(555) 223-4456",
+    website: "https://stonebridgeresort.example.com"
+  }
+].map(course => ({
+  ...course,
+  teeTimes: generateTeeTimes(course.id, course.basePrice)
+}));
 
-  const handleAddIdea = (e) => {
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+const formatDate = (dateStr) => {
+  const date = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (date.getTime() === today.getTime()) return 'Today';
+  if (date.getTime() === tomorrow.getTime()) return 'Tomorrow';
+
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+};
+
+const formatTime = (timeStr) => {
+  const [hours, minutes] = timeStr.split(':');
+  const h = parseInt(hours);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
+
+const getDifficultyColor = (difficulty) => {
+  switch (difficulty) {
+    case 'beginner': return { bg: '#2C5530', text: '#F5F1E8' };
+    case 'intermediate': return { bg: '#D4C4A8', text: '#1A1A1A' };
+    case 'advanced': return { bg: '#B85C38', text: '#F5F1E8' };
+    default: return { bg: '#1A1A1A', text: '#F5F1E8' };
+  }
+};
+
+// ============================================
+// COMPONENTS
+// ============================================
+
+// Noise texture overlay component
+const NoiseOverlay = () => (
+  <div
+    className="fixed inset-0 pointer-events-none z-50 opacity-[0.03]"
+    style={{
+      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+    }}
+  />
+);
+
+// Landing Page Component
+const LandingPage = ({ onSubmit }) => {
+  const [zipCode, setZipCode] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    const newIdea = {
-      id: Date.now().toString(),
-      ...formData,
-      tags: formData.tags.split(',').map(t => t.trim()).filter(t => t),
-      createdAt: new Date().toISOString()
+    if (!/^\d{5}$/.test(zipCode)) {
+      setError('Please enter a valid 5-digit zip code');
+      return;
+    }
+    setError('');
+    onSubmit(zipCode);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ backgroundColor: '#F5F1E8' }}>
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="mb-6 flex justify-center">
+          <div
+            className="w-24 h-24 flex items-center justify-center"
+            style={{
+              border: '3px solid #1A1A1A',
+              backgroundColor: '#2C5530'
+            }}
+          >
+            <Flag size={48} color="#F5F1E8" strokeWidth={2.5} />
+          </div>
+        </div>
+        <h1
+          className="text-5xl md:text-7xl font-black tracking-tighter mb-4 uppercase"
+          style={{
+            color: '#1A1A1A',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontStretch: 'condensed',
+            letterSpacing: '-0.05em'
+          }}
+        >
+          FIND TEE TIMES
+        </h1>
+        <p
+          className="text-lg md:text-xl"
+          style={{
+            color: '#1A1A1A',
+            fontFamily: 'system-ui, sans-serif',
+            opacity: 0.7
+          }}
+        >
+          Book your next round at courses near you
+        </p>
+      </div>
+
+      {/* Search Form */}
+      <form onSubmit={handleSubmit} className="w-full max-w-md">
+        <div className="mb-4">
+          <label
+            htmlFor="zipcode"
+            className="block text-sm font-bold uppercase tracking-wider mb-2"
+            style={{ color: '#1A1A1A' }}
+          >
+            Enter Your Zip Code
+          </label>
+          <div className="relative">
+            <MapPin
+              className="absolute left-4 top-1/2 transform -translate-y-1/2"
+              size={20}
+              color="#1A1A1A"
+              strokeWidth={2}
+            />
+            <input
+              type="text"
+              id="zipcode"
+              value={zipCode}
+              onChange={(e) => {
+                setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5));
+                setError('');
+              }}
+              placeholder="12345"
+              className="w-full p-4 pl-12 text-xl outline-none transition-all"
+              style={{
+                border: '3px solid #1A1A1A',
+                backgroundColor: '#FFFFFF',
+                fontFamily: 'ui-monospace, monospace',
+                letterSpacing: '0.1em'
+              }}
+              maxLength={5}
+            />
+          </div>
+          {error && (
+            <p className="mt-2 text-sm font-medium" style={{ color: '#B85C38' }}>
+              {error}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="w-full p-4 text-lg font-bold uppercase tracking-wider transition-all hover:translate-y-[-2px]"
+          style={{
+            border: '3px solid #1A1A1A',
+            backgroundColor: '#2C5530',
+            color: '#F5F1E8'
+          }}
+        >
+          Search Courses
+        </button>
+      </form>
+
+      {/* Footer decoration */}
+      <div className="mt-16 flex items-center gap-4">
+        <div className="w-16 h-0.5" style={{ backgroundColor: '#1A1A1A', opacity: 0.3 }} />
+        <span
+          className="text-sm uppercase tracking-widest"
+          style={{ color: '#1A1A1A', opacity: 0.5 }}
+        >
+          Est. 2024
+        </span>
+        <div className="w-16 h-0.5" style={{ backgroundColor: '#1A1A1A', opacity: 0.3 }} />
+      </div>
+    </div>
+  );
+};
+
+// Course Card Component
+const CourseCard = ({ course, onClick }) => {
+  const diffColors = getDifficultyColor(course.difficulty);
+  const nextThreeTimes = course.teeTimes.slice(0, 3);
+
+  return (
+    <div
+      onClick={onClick}
+      className="cursor-pointer transition-all hover:translate-y-[-4px]"
+      style={{
+        border: '3px solid #1A1A1A',
+        backgroundColor: '#FFFFFF'
+      }}
+    >
+      {/* Card Header */}
+      <div className="p-4" style={{ borderBottom: '2px solid #1A1A1A' }}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h3
+              className="text-xl font-black uppercase tracking-tight mb-1"
+              style={{ color: '#1A1A1A' }}
+            >
+              {course.name}
+            </h3>
+            <div className="flex items-center gap-2 text-sm" style={{ color: '#1A1A1A', opacity: 0.7 }}>
+              <MapPin size={14} strokeWidth={2} />
+              <span style={{ fontFamily: 'ui-monospace, monospace' }}>
+                {course.distance} mi
+              </span>
+              <span className="mx-1">•</span>
+              <span>{course.city}</span>
+            </div>
+          </div>
+          <ChevronRight size={24} color="#1A1A1A" />
+        </div>
+      </div>
+
+      {/* Badges Row */}
+      <div
+        className="flex flex-wrap gap-2 p-4"
+        style={{ borderBottom: '2px solid #1A1A1A', backgroundColor: '#F5F1E8' }}
+      >
+        {/* Difficulty Badge */}
+        <span
+          className="px-3 py-1 text-xs font-bold uppercase tracking-wider"
+          style={{
+            backgroundColor: diffColors.bg,
+            color: diffColors.text,
+            border: '2px solid #1A1A1A'
+          }}
+        >
+          {course.difficulty}
+        </span>
+
+        {/* Price Badge */}
+        <span
+          className="px-3 py-1 text-xs font-bold"
+          style={{
+            backgroundColor: '#D4C4A8',
+            color: '#1A1A1A',
+            border: '2px solid #1A1A1A',
+            fontFamily: 'ui-monospace, monospace'
+          }}
+        >
+          {course.priceRange}
+        </span>
+
+        {/* Holes Badge */}
+        <span
+          className="px-3 py-1 text-xs font-bold"
+          style={{
+            backgroundColor: '#1A1A1A',
+            color: '#F5F1E8',
+            border: '2px solid #1A1A1A',
+            fontFamily: 'ui-monospace, monospace'
+          }}
+        >
+          {course.holes}H / PAR {course.par}
+        </span>
+
+        {/* Driving Range Badge */}
+        {course.hasDrivingRange && (
+          <span
+            className="px-3 py-1 text-xs font-bold uppercase flex items-center gap-1"
+            style={{
+              backgroundColor: '#2C5530',
+              color: '#F5F1E8',
+              border: '2px solid #1A1A1A'
+            }}
+          >
+            <Target size={12} strokeWidth={2.5} />
+            Range
+          </span>
+        )}
+      </div>
+
+      {/* Next Available Times */}
+      <div className="p-4">
+        <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#1A1A1A', opacity: 0.6 }}>
+          Next Available
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {nextThreeTimes.map((time) => (
+            <div
+              key={time.id}
+              className="px-3 py-2 text-center"
+              style={{
+                border: '2px solid #1A1A1A',
+                backgroundColor: '#F5F1E8'
+              }}
+            >
+              <div
+                className="text-sm font-bold"
+                style={{ fontFamily: 'ui-monospace, monospace', color: '#1A1A1A' }}
+              >
+                {formatTime(time.time)}
+              </div>
+              <div className="text-xs" style={{ color: '#2C5530', fontWeight: 'bold' }}>
+                ${time.price}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Filter Controls Component
+const FilterControls = ({
+  sortBy,
+  setSortBy,
+  showDrivingRangeOnly,
+  setShowDrivingRangeOnly,
+  difficultyFilter,
+  setDifficultyFilter,
+  priceFilter,
+  setPriceFilter
+}) => {
+  const [showFilters, setShowFilters] = useState(false);
+
+  return (
+    <div className="mb-6">
+      {/* Main Controls */}
+      <div className="flex flex-wrap gap-3 items-center">
+        {/* Sort Dropdown */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="appearance-none px-4 py-3 pr-10 font-bold uppercase text-sm tracking-wider cursor-pointer outline-none"
+            style={{
+              border: '3px solid #1A1A1A',
+              backgroundColor: '#FFFFFF',
+              color: '#1A1A1A'
+            }}
+          >
+            <option value="distance">Distance</option>
+            <option value="price">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="difficulty">Difficulty</option>
+          </select>
+          <ArrowUpDown
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
+            size={16}
+            color="#1A1A1A"
+          />
+        </div>
+
+        {/* Filter Toggle */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="px-4 py-3 font-bold uppercase text-sm tracking-wider flex items-center gap-2 transition-all"
+          style={{
+            border: '3px solid #1A1A1A',
+            backgroundColor: showFilters ? '#1A1A1A' : '#FFFFFF',
+            color: showFilters ? '#F5F1E8' : '#1A1A1A'
+          }}
+        >
+          <Filter size={16} />
+          Filters
+        </button>
+
+        {/* Driving Range Toggle */}
+        <button
+          onClick={() => setShowDrivingRangeOnly(!showDrivingRangeOnly)}
+          className="px-4 py-3 font-bold uppercase text-sm tracking-wider flex items-center gap-2 transition-all"
+          style={{
+            border: '3px solid #1A1A1A',
+            backgroundColor: showDrivingRangeOnly ? '#2C5530' : '#FFFFFF',
+            color: showDrivingRangeOnly ? '#F5F1E8' : '#1A1A1A'
+          }}
+        >
+          <Target size={16} />
+          Driving Range
+          {showDrivingRangeOnly && <Check size={14} />}
+        </button>
+      </div>
+
+      {/* Expanded Filters */}
+      {showFilters && (
+        <div
+          className="mt-4 p-4 grid grid-cols-1 md:grid-cols-2 gap-4"
+          style={{
+            border: '3px solid #1A1A1A',
+            backgroundColor: '#F5F1E8'
+          }}
+        >
+          {/* Difficulty Filter */}
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wider mb-2" style={{ color: '#1A1A1A' }}>
+              Difficulty
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['all', 'beginner', 'intermediate', 'advanced'].map((diff) => (
+                <button
+                  key={diff}
+                  onClick={() => setDifficultyFilter(diff)}
+                  className="px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all"
+                  style={{
+                    border: '2px solid #1A1A1A',
+                    backgroundColor: difficultyFilter === diff ? '#1A1A1A' : '#FFFFFF',
+                    color: difficultyFilter === diff ? '#F5F1E8' : '#1A1A1A'
+                  }}
+                >
+                  {diff}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Price Filter */}
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wider mb-2" style={{ color: '#1A1A1A' }}>
+              Price Range
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['all', '$', '$$', '$$$'].map((price) => (
+                <button
+                  key={price}
+                  onClick={() => setPriceFilter(price)}
+                  className="px-3 py-2 text-xs font-bold tracking-wider transition-all"
+                  style={{
+                    border: '2px solid #1A1A1A',
+                    backgroundColor: priceFilter === price ? '#1A1A1A' : '#FFFFFF',
+                    color: priceFilter === price ? '#F5F1E8' : '#1A1A1A',
+                    fontFamily: 'ui-monospace, monospace'
+                  }}
+                >
+                  {price === 'all' ? 'ALL' : price}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Course List Component
+const CourseList = ({ zipCode, onBack, onSelectCourse }) => {
+  const [sortBy, setSortBy] = useState('distance');
+  const [showDrivingRangeOnly, setShowDrivingRangeOnly] = useState(false);
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [priceFilter, setPriceFilter] = useState('all');
+
+  const filteredAndSortedCourses = useMemo(() => {
+    let courses = [...MOCK_COURSES];
+
+    // Apply filters
+    if (showDrivingRangeOnly) {
+      courses = courses.filter(c => c.hasDrivingRange);
+    }
+    if (difficultyFilter !== 'all') {
+      courses = courses.filter(c => c.difficulty === difficultyFilter);
+    }
+    if (priceFilter !== 'all') {
+      courses = courses.filter(c => c.priceRange === priceFilter);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'distance':
+        courses.sort((a, b) => a.distance - b.distance);
+        break;
+      case 'price':
+        courses.sort((a, b) => a.basePrice - b.basePrice);
+        break;
+      case 'price-desc':
+        courses.sort((a, b) => b.basePrice - a.basePrice);
+        break;
+      case 'difficulty':
+        const diffOrder = { beginner: 0, intermediate: 1, advanced: 2 };
+        courses.sort((a, b) => diffOrder[a.difficulty] - diffOrder[b.difficulty]);
+        break;
+    }
+
+    return courses;
+  }, [sortBy, showDrivingRangeOnly, difficultyFilter, priceFilter]);
+
+  return (
+    <div className="min-h-screen p-4 md:p-8" style={{ backgroundColor: '#F5F1E8' }}>
+      {/* Header */}
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider mb-2 transition-all hover:opacity-70"
+              style={{ color: '#1A1A1A' }}
+            >
+              <ChevronRight size={16} className="rotate-180" />
+              New Search
+            </button>
+            <h1
+              className="text-3xl md:text-4xl font-black uppercase tracking-tight"
+              style={{ color: '#1A1A1A' }}
+            >
+              Courses Near {zipCode}
+            </h1>
+            <p className="text-sm mt-1" style={{ color: '#1A1A1A', opacity: 0.6 }}>
+              {filteredAndSortedCourses.length} courses found
+            </p>
+          </div>
+          <div
+            className="hidden md:flex w-16 h-16 items-center justify-center"
+            style={{ border: '3px solid #1A1A1A', backgroundColor: '#2C5530' }}
+          >
+            <Flag size={32} color="#F5F1E8" strokeWidth={2.5} />
+          </div>
+        </div>
+
+        {/* Filter Controls */}
+        <FilterControls
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          showDrivingRangeOnly={showDrivingRangeOnly}
+          setShowDrivingRangeOnly={setShowDrivingRangeOnly}
+          difficultyFilter={difficultyFilter}
+          setDifficultyFilter={setDifficultyFilter}
+          priceFilter={priceFilter}
+          setPriceFilter={setPriceFilter}
+        />
+
+        {/* Course Grid */}
+        {filteredAndSortedCourses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredAndSortedCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                onClick={() => onSelectCourse(course)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div
+            className="text-center p-12"
+            style={{ border: '3px solid #1A1A1A', backgroundColor: '#FFFFFF' }}
+          >
+            <p className="text-xl font-bold uppercase" style={{ color: '#1A1A1A' }}>
+              No courses match your filters
+            </p>
+            <p className="mt-2" style={{ color: '#1A1A1A', opacity: 0.6 }}>
+              Try adjusting your filter criteria
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Course Detail Modal Component
+const CourseDetail = ({ course, onClose }) => {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const diffColors = getDifficultyColor(course.difficulty);
+
+  // Get unique dates from tee times
+  const availableDates = useMemo(() => {
+    const dates = [...new Set(course.teeTimes.map(t => t.date))];
+    return dates.sort();
+  }, [course.teeTimes]);
+
+  // Set initial selected date
+  useMemo(() => {
+    if (availableDates.length > 0 && !selectedDate) {
+      setSelectedDate(availableDates[0]);
+    }
+  }, [availableDates, selectedDate]);
+
+  // Get tee times for selected date grouped by period
+  const timesByPeriod = useMemo(() => {
+    if (!selectedDate) return { morning: [], afternoon: [], twilight: [] };
+
+    const timesForDate = course.teeTimes.filter(t => t.date === selectedDate);
+    return {
+      morning: timesForDate.filter(t => t.period === 'morning'),
+      afternoon: timesForDate.filter(t => t.period === 'afternoon'),
+      twilight: timesForDate.filter(t => t.period === 'twilight')
     };
+  }, [course.teeTimes, selectedDate]);
 
-    setIdeas([newIdea, ...ideas]);
-    setShowAddModal(false);
-    setFormData({
-      name: '',
-      emoji: '💡',
-      description: '',
-      category: '',
-      tags: '',
-      images: [],
-      notes: []
-    });
-    setShowEmojiPicker(false);
+  return (
+    <div
+      className="fixed inset-0 z-40 overflow-auto"
+      style={{ backgroundColor: 'rgba(26, 26, 26, 0.9)' }}
+      onClick={onClose}
+    >
+      <div
+        className="min-h-screen md:py-8 md:px-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="max-w-4xl mx-auto"
+          style={{ backgroundColor: '#F5F1E8' }}
+        >
+          {/* Modal Header */}
+          <div
+            className="sticky top-0 z-10 flex items-center justify-between p-4"
+            style={{
+              backgroundColor: '#1A1A1A',
+              borderBottom: '3px solid #1A1A1A'
+            }}
+          >
+            <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight" style={{ color: '#F5F1E8' }}>
+              {course.name}
+            </h2>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 flex items-center justify-center transition-all hover:opacity-70"
+              style={{ backgroundColor: '#F5F1E8' }}
+            >
+              <X size={24} color="#1A1A1A" strokeWidth={3} />
+            </button>
+          </div>
+
+          {/* Course Info */}
+          <div className="p-6" style={{ borderBottom: '3px solid #1A1A1A' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column */}
+              <div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span
+                    className="px-3 py-1 text-sm font-bold uppercase tracking-wider"
+                    style={{
+                      backgroundColor: diffColors.bg,
+                      color: diffColors.text,
+                      border: '2px solid #1A1A1A'
+                    }}
+                  >
+                    {course.difficulty}
+                  </span>
+                  <span
+                    className="px-3 py-1 text-sm font-bold"
+                    style={{
+                      backgroundColor: '#D4C4A8',
+                      color: '#1A1A1A',
+                      border: '2px solid #1A1A1A',
+                      fontFamily: 'ui-monospace, monospace'
+                    }}
+                  >
+                    {course.priceRange}
+                  </span>
+                  <span
+                    className="px-3 py-1 text-sm font-bold"
+                    style={{
+                      backgroundColor: '#1A1A1A',
+                      color: '#F5F1E8',
+                      border: '2px solid #1A1A1A',
+                      fontFamily: 'ui-monospace, monospace'
+                    }}
+                  >
+                    {course.holes}H / PAR {course.par}
+                  </span>
+                  {course.hasDrivingRange && (
+                    <span
+                      className="px-3 py-1 text-sm font-bold uppercase flex items-center gap-1"
+                      style={{
+                        backgroundColor: '#2C5530',
+                        color: '#F5F1E8',
+                        border: '2px solid #1A1A1A'
+                      }}
+                    >
+                      <Target size={14} strokeWidth={2.5} />
+                      Range
+                    </span>
+                  )}
+                </div>
+
+                <p className="mb-4" style={{ color: '#1A1A1A', lineHeight: 1.6 }}>
+                  {course.description}
+                </p>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} color="#1A1A1A" />
+                    <span style={{ color: '#1A1A1A' }}>
+                      {course.address}, {course.city} — <span style={{ fontFamily: 'ui-monospace, monospace' }}>{course.distance} mi</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} color="#1A1A1A" />
+                    <span style={{ color: '#1A1A1A', fontFamily: 'ui-monospace, monospace' }}>
+                      Est. {course.yearEstablished}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - Amenities */}
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: '#1A1A1A' }}>
+                  Amenities
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {course.amenities.map((amenity) => (
+                    <span
+                      key={amenity}
+                      className="px-3 py-2 text-sm"
+                      style={{
+                        border: '2px solid #1A1A1A',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1A1A1A'
+                      }}
+                    >
+                      {amenity}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Date Selector */}
+          <div className="p-6" style={{ borderBottom: '3px solid #1A1A1A', backgroundColor: '#D4C4A8' }}>
+            <h3 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: '#1A1A1A' }}>
+              Select Date
+            </h3>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {availableDates.map((date) => (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  className="px-4 py-3 text-center whitespace-nowrap transition-all flex-shrink-0"
+                  style={{
+                    border: '3px solid #1A1A1A',
+                    backgroundColor: selectedDate === date ? '#1A1A1A' : '#FFFFFF',
+                    color: selectedDate === date ? '#F5F1E8' : '#1A1A1A',
+                    minWidth: '100px'
+                  }}
+                >
+                  <div className="text-sm font-bold uppercase">{formatDate(date)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tee Times Grid */}
+          <div className="p-6">
+            <h3 className="text-lg font-bold uppercase tracking-wider mb-4" style={{ color: '#1A1A1A' }}>
+              Available Tee Times
+            </h3>
+
+            {/* Morning */}
+            {timesByPeriod.morning.length > 0 && (
+              <div className="mb-6">
+                <div
+                  className="flex items-center gap-2 mb-3 px-3 py-2"
+                  style={{ backgroundColor: '#2C5530' }}
+                >
+                  <Clock size={16} color="#F5F1E8" />
+                  <span className="text-sm font-bold uppercase tracking-wider" style={{ color: '#F5F1E8' }}>
+                    Morning
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {timesByPeriod.morning.map((time) => (
+                    <button
+                      key={time.id}
+                      className="p-3 text-center transition-all hover:translate-y-[-2px]"
+                      style={{
+                        border: '2px solid #1A1A1A',
+                        backgroundColor: '#FFFFFF'
+                      }}
+                    >
+                      <div
+                        className="text-lg font-bold"
+                        style={{ fontFamily: 'ui-monospace, monospace', color: '#1A1A1A' }}
+                      >
+                        {formatTime(time.time)}
+                      </div>
+                      <div className="text-sm font-bold" style={{ color: '#2C5530' }}>
+                        ${time.price}
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: '#1A1A1A', opacity: 0.6 }}>
+                        {time.spots} {time.spots === 1 ? 'spot' : 'spots'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Afternoon */}
+            {timesByPeriod.afternoon.length > 0 && (
+              <div className="mb-6">
+                <div
+                  className="flex items-center gap-2 mb-3 px-3 py-2"
+                  style={{ backgroundColor: '#D4C4A8' }}
+                >
+                  <Clock size={16} color="#1A1A1A" />
+                  <span className="text-sm font-bold uppercase tracking-wider" style={{ color: '#1A1A1A' }}>
+                    Afternoon
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {timesByPeriod.afternoon.map((time) => (
+                    <button
+                      key={time.id}
+                      className="p-3 text-center transition-all hover:translate-y-[-2px]"
+                      style={{
+                        border: '2px solid #1A1A1A',
+                        backgroundColor: '#FFFFFF'
+                      }}
+                    >
+                      <div
+                        className="text-lg font-bold"
+                        style={{ fontFamily: 'ui-monospace, monospace', color: '#1A1A1A' }}
+                      >
+                        {formatTime(time.time)}
+                      </div>
+                      <div className="text-sm font-bold" style={{ color: '#2C5530' }}>
+                        ${time.price}
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: '#1A1A1A', opacity: 0.6 }}>
+                        {time.spots} {time.spots === 1 ? 'spot' : 'spots'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Twilight */}
+            {timesByPeriod.twilight.length > 0 && (
+              <div className="mb-6">
+                <div
+                  className="flex items-center gap-2 mb-3 px-3 py-2"
+                  style={{ backgroundColor: '#B85C38' }}
+                >
+                  <Clock size={16} color="#F5F1E8" />
+                  <span className="text-sm font-bold uppercase tracking-wider" style={{ color: '#F5F1E8' }}>
+                    Twilight
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {timesByPeriod.twilight.map((time) => (
+                    <button
+                      key={time.id}
+                      className="p-3 text-center transition-all hover:translate-y-[-2px]"
+                      style={{
+                        border: '2px solid #1A1A1A',
+                        backgroundColor: '#FFFFFF'
+                      }}
+                    >
+                      <div
+                        className="text-lg font-bold"
+                        style={{ fontFamily: 'ui-monospace, monospace', color: '#1A1A1A' }}
+                      >
+                        {formatTime(time.time)}
+                      </div>
+                      <div className="text-sm font-bold" style={{ color: '#2C5530' }}>
+                        ${time.price}
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: '#1A1A1A', opacity: 0.6 }}>
+                        {time.spots} {time.spots === 1 ? 'spot' : 'spots'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CTA Footer */}
+          <div
+            className="sticky bottom-0 p-6"
+            style={{
+              backgroundColor: '#1A1A1A',
+              borderTop: '3px solid #1A1A1A'
+            }}
+          >
+            <a
+              href={course.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full p-4 text-center text-lg font-bold uppercase tracking-wider transition-all hover:translate-y-[-2px]"
+              style={{
+                border: '3px solid #F5F1E8',
+                backgroundColor: '#2C5530',
+                color: '#F5F1E8'
+              }}
+            >
+              Book at Course Website
+            </a>
+            <p className="text-center text-sm mt-3" style={{ color: '#F5F1E8', opacity: 0.6 }}>
+              {course.phone}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// MAIN APP COMPONENT
+// ============================================
+export default function GolfTeeTimes() {
+  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'list'
+  const [zipCode, setZipCode] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState(null);
+
+  const handleZipCodeSubmit = (zip) => {
+    setZipCode(zip);
+    setCurrentView('list');
   };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const readers = files.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(readers).then(images => {
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...images]
-      }));
-    });
+  const handleBackToLanding = () => {
+    setCurrentView('landing');
+    setZipCode('');
+    setSelectedCourse(null);
   };
 
-  const removeImage = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+  const handleSelectCourse = (course) => {
+    setSelectedCourse(course);
   };
 
-  const filteredIdeas = ideas
-    .filter(idea => currentFilter === 'all' || idea.category === currentFilter)
-    .filter(idea => 
-      searchQuery === '' || 
-      idea.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      idea.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      idea.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-
-  const getDaysSince = (dateString) => {
-    const days = Math.floor((Date.now() - new Date(dateString)) / (1000 * 60 * 60 * 24));
-    if (days === 0) return 'today';
-    if (days === 1) return 'yesterday';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    if (days < 365) return `${Math.floor(days / 30)} months ago`;
-    return `${Math.floor(days / 365)} years ago`;
+  const handleCloseDetail = () => {
+    setSelectedCourse(null);
   };
 
   return (
     <>
-      <style jsx global>{`
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-
-        html, body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-          background: #0a0a0a;
-          color: #ffffff;
-          overflow-x: hidden;
-        }
-
-        .app-container {
-          min-height: 100vh;
-          padding-bottom: 100px;
-        }
-
-        .header {
-          position: sticky;
-          top: 0;
-          background: rgba(10, 10, 10, 0.95);
-          backdrop-filter: blur(20px);
-          padding: 24px 20px 16px;
-          z-index: 100;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .header-title {
-          font-size: 32px;
-          font-weight: 700;
-          letter-spacing: -1px;
-          background: linear-gradient(135deg, #fff 0%, #888 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          margin-bottom: 6px;
-        }
-
-        .header-subtitle {
-          font-size: 14px;
-          color: #666;
-          font-weight: 400;
-          letter-spacing: 0.5px;
-        }
-
-        .search-container {
-          padding: 16px 20px;
-          position: sticky;
-          top: 90px;
-          background: rgba(10, 10, 10, 0.95);
-          backdrop-filter: blur(20px);
-          z-index: 99;
-        }
-
-        .search-box {
-          width: 100%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 12px 16px 12px 44px;
-          color: #fff;
-          font-size: 15px;
-          outline: none;
-          transition: all 0.2s;
-          position: relative;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 34px;
-          top: 28px;
-          color: #666;
-          width: 18px;
-          height: 18px;
-        }
-
-        .search-box:focus {
-          border-color: rgba(255, 255, 255, 0.3);
-          background: rgba(255, 255, 255, 0.08);
-        }
-
-        .filter-chips {
-          display: flex;
-          gap: 8px;
-          padding: 8px 20px 16px;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          scrollbar-width: none;
-        }
-
-        .filter-chips::-webkit-scrollbar {
-          display: none;
-        }
-
-        .chip {
-          padding: 8px 18px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 20px;
-          font-size: 13px;
-          white-space: nowrap;
-          cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          text-transform: capitalize;
-        }
-
-        .chip:hover {
-          background: rgba(255, 255, 255, 0.08);
-        }
-
-        .chip.active {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: rgba(255, 255, 255, 0.3);
-          transform: scale(1.05);
-        }
-
-        .ideas-grid {
-          padding: 0 20px;
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 20px;
-        }
-
-        .idea-card {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 20px;
-          overflow: hidden;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-        }
-
-        .idea-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(255, 255, 255, 0.15);
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .idea-card:active {
-          transform: scale(0.98);
-        }
-
-        .idea-visual {
-          width: 100%;
-          height: 220px;
-          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .idea-emoji {
-          font-size: 72px;
-          position: relative;
-          z-index: 2;
-        }
-
-        .idea-images {
-          display: flex;
-          gap: 4px;
-          overflow-x: auto;
-          scrollbar-width: none;
-        }
-
-        .idea-images::-webkit-scrollbar {
-          display: none;
-        }
-
-        .idea-image {
-          width: 100%;
-          height: 220px;
-          object-fit: cover;
-          flex-shrink: 0;
-        }
-
-        .idea-content {
-          padding: 20px;
-        }
-
-        .idea-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: start;
-          margin-bottom: 10px;
-        }
-
-        .idea-title {
-          font-size: 20px;
-          font-weight: 600;
-          letter-spacing: -0.5px;
-          flex: 1;
-        }
-
-        .idea-age {
-          font-size: 11px;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          white-space: nowrap;
-          margin-left: 12px;
-        }
-
-        .idea-description {
-          font-size: 14px;
-          color: #999;
-          line-height: 1.6;
-          margin-bottom: 16px;
-        }
-
-        .idea-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
-
-        .tag {
-          padding: 5px 12px;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 14px;
-          font-size: 11px;
-          color: #aaa;
-          border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .fab {
-          position: fixed;
-          bottom: 28px;
-          right: 28px;
-          width: 64px;
-          height: 64px;
-          background: linear-gradient(135deg, #fff 0%, #e0e0e0 100%);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #000;
-          cursor: pointer;
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          z-index: 50;
-        }
-
-        .fab:hover {
-          transform: scale(1.1);
-          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-        }
-
-        .fab:active {
-          transform: scale(0.95);
-        }
-
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.95);
-          z-index: 200;
-          padding: 20px;
-          overflow-y: auto;
-          animation: fadeIn 0.2s ease;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        .modal-content {
-          max-width: 600px;
-          margin: 0 auto;
-          animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-        }
-
-        .modal-title {
-          font-size: 28px;
-          font-weight: 700;
-          letter-spacing: -0.5px;
-        }
-
-        .close-btn {
-          width: 40px;
-          height: 40px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          color: #888;
-          transition: all 0.2s;
-          border-radius: 50%;
-        }
-
-        .close-btn:hover {
-          background: rgba(255, 255, 255, 0.05);
-          color: #fff;
-        }
-
-        .form-group {
-          margin-bottom: 24px;
-        }
-
-        .form-label {
-          display: block;
-          font-size: 12px;
-          color: #888;
-          margin-bottom: 10px;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          font-weight: 500;
-        }
-
-        .form-input,
-        .form-textarea {
-          width: 100%;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 14px;
-          padding: 16px;
-          color: #fff;
-          font-size: 16px;
-          font-family: inherit;
-          transition: all 0.2s;
-        }
-
-        .form-input:focus,
-        .form-textarea:focus {
-          outline: none;
-          border-color: rgba(255, 255, 255, 0.3);
-          background: rgba(255, 255, 255, 0.08);
-        }
-
-        .form-textarea {
-          resize: vertical;
-          min-height: 120px;
-          line-height: 1.5;
-        }
-
-        .emoji-selector {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .emoji-display {
-          width: 64px;
-          height: 64px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 36px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .emoji-display:hover {
-          background: rgba(255, 255, 255, 0.08);
-          transform: scale(1.05);
-        }
-
-        .emoji-grid {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 8px;
-          flex: 1;
-        }
-
-        .emoji-option {
-          font-size: 28px;
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-          text-align: center;
-          cursor: pointer;
-          transition: all 0.2s;
-          border: 1px solid transparent;
-        }
-
-        .emoji-option:hover {
-          background: rgba(255, 255, 255, 0.1);
-          transform: scale(1.1);
-        }
-
-        .emoji-option.selected {
-          border-color: rgba(255, 255, 255, 0.3);
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        .image-upload-zone {
-          border: 2px dashed rgba(255, 255, 255, 0.2);
-          border-radius: 14px;
-          padding: 32px;
-          text-align: center;
-          cursor: pointer;
-          transition: all 0.3s;
-          background: rgba(255, 255, 255, 0.02);
-        }
-
-        .image-upload-zone:hover {
-          border-color: rgba(255, 255, 255, 0.4);
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .upload-icon {
-          width: 48px;
-          height: 48px;
-          margin: 0 auto 12px;
-          color: #666;
-        }
-
-        .upload-text {
-          color: #888;
-          font-size: 14px;
-        }
-
-        .image-preview-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-          margin-top: 16px;
-        }
-
-        .image-preview {
-          position: relative;
-          aspect-ratio: 1;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .image-preview img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .remove-image {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          width: 28px;
-          height: 28px;
-          background: rgba(0, 0, 0, 0.8);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          color: #fff;
-          transition: all 0.2s;
-        }
-
-        .remove-image:hover {
-          background: rgba(255, 0, 0, 0.8);
-          transform: scale(1.1);
-        }
-
-        .submit-btn {
-          width: 100%;
-          padding: 18px;
-          background: linear-gradient(135deg, #fff 0%, #e0e0e0 100%);
-          border: none;
-          border-radius: 14px;
-          color: #000;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          margin-top: 32px;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .submit-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
-        }
-
-        .submit-btn:active {
-          transform: scale(0.98);
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 80px 20px;
-          color: #666;
-        }
-
-        .empty-icon {
-          font-size: 72px;
-          margin-bottom: 20px;
-          opacity: 0.5;
-        }
-
-        .empty-title {
-          font-size: 20px;
-          margin-bottom: 8px;
-          color: #888;
-        }
-
-        .empty-subtitle {
-          font-size: 14px;
-          color: #666;
-        }
-      `}</style>
-
-      <div className="app-container">
-        {/* Header */}
-        <div className="header">
-          <div className="header-title">idea:stream</div>
-          <div className="header-subtitle">seeds growing into forests</div>
-        </div>
-
-        {/* Search */}
-        <div className="search-container">
-          <input
-            type="text"
-            className="search-box"
-            placeholder="Search your seeds..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search className="search-icon" />
-        </div>
-
-        {/* Filter Chips */}
-        <div className="filter-chips">
-          {categories.map(cat => (
-            <div
-              key={cat}
-              className={`chip ${currentFilter === cat ? 'active' : ''}`}
-              onClick={() => setCurrentFilter(cat)}
-            >
-              {cat}
-            </div>
-          ))}
-        </div>
-
-        {/* Ideas Grid */}
-        <div className="ideas-grid">
-          {filteredIdeas.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">✨</div>
-              <div className="empty-title">No seeds here yet</div>
-              <div className="empty-subtitle">Tap the + to plant your first idea</div>
-            </div>
-          ) : (
-            filteredIdeas.map(idea => (
-              <div key={idea.id} className="idea-card" onClick={() => setSelectedIdea(idea)}>
-                <div className="idea-visual">
-                  {idea.images.length > 0 ? (
-                    <div className="idea-images">
-                      {idea.images.map((img, idx) => (
-                        <img key={idx} src={img} alt="" className="idea-image" />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="idea-emoji">{idea.emoji}</div>
-                  )}
-                </div>
-                <div className="idea-content">
-                  <div className="idea-header">
-                    <div className="idea-title">{idea.name}</div>
-                    <div className="idea-age">{getDaysSince(idea.createdAt)}</div>
-                  </div>
-                  <div className="idea-description">{idea.description}</div>
-                  <div className="idea-tags">
-                    {idea.tags.map((tag, idx) => (
-                      <span key={idx} className="tag">{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* FAB */}
-        <div className="fab" onClick={() => setShowAddModal(true)}>
-          <Plus size={28} strokeWidth={2.5} />
-        </div>
-
-        {/* Add Modal */}
-        {showAddModal && (
-          <div className="modal-overlay" onClick={(e) => {
-            if (e.target.className === 'modal-overlay') setShowAddModal(false);
-          }}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <div className="modal-title">Plant a Seed</div>
-                <div className="close-btn" onClick={() => setShowAddModal(false)}>
-                  <X size={24} />
-                </div>
-              </div>
-
-              <form onSubmit={handleAddIdea}>
-                {/* Name */}
-                <div className="form-group">
-                  <label className="form-label">Idea Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="What's the big idea?"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-
-                {/* Emoji */}
-                <div className="form-group">
-                  <label className="form-label">Choose Your Icon</label>
-                  <div className="emoji-selector">
-                    <div 
-                      className="emoji-display"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    >
-                      {formData.emoji}
-                    </div>
-                    {showEmojiPicker && (
-                      <div className="emoji-grid">
-                        {emojiOptions.map(emoji => (
-                          <div
-                            key={emoji}
-                            className={`emoji-option ${formData.emoji === emoji ? 'selected' : ''}`}
-                            onClick={() => {
-                              setFormData({ ...formData, emoji });
-                              setShowEmojiPicker(false);
-                            }}
-                          >
-                            {emoji}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="form-group">
-                  <label className="form-label">The Vision</label>
-                  <textarea
-                    className="form-textarea"
-                    placeholder="What's the essence of this idea?"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    required
-                  />
-                </div>
-
-                {/* Category */}
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="app, product, art, story..."
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value.toLowerCase() })}
-                    required
-                  />
-                </div>
-
-                {/* Tags */}
-                <div className="form-group">
-                  <label className="form-label">Tags (comma separated)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="tech, creative, mobile..."
-                    value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  />
-                </div>
-
-                {/* Images */}
-                <div className="form-group">
-                  <label className="form-label">Mood Board (optional)</label>
-                  <input
-                    type="file"
-                    id="imageUpload"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    style={{ display: 'none' }}
-                  />
-                  <label htmlFor="imageUpload">
-                    <div className="image-upload-zone">
-                      <ImageIcon className="upload-icon" />
-                      <div className="upload-text">
-                        Tap to add inspiration images
-                      </div>
-                    </div>
-                  </label>
-
-                  {formData.images.length > 0 && (
-                    <div className="image-preview-grid">
-                      {formData.images.map((img, idx) => (
-                        <div key={idx} className="image-preview">
-                          <img src={img} alt="" />
-                          <div className="remove-image" onClick={() => removeImage(idx)}>
-                            <X size={16} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <button type="submit" className="submit-btn">
-                  Plant This Seed
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
+      <NoiseOverlay />
+      {currentView === 'landing' && (
+        <LandingPage onSubmit={handleZipCodeSubmit} />
+      )}
+      {currentView === 'list' && (
+        <CourseList
+          zipCode={zipCode}
+          onBack={handleBackToLanding}
+          onSelectCourse={handleSelectCourse}
+        />
+      )}
+      {selectedCourse && (
+        <CourseDetail
+          course={selectedCourse}
+          onClose={handleCloseDetail}
+        />
+      )}
     </>
   );
 }
